@@ -1,0 +1,178 @@
+<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover"><title>Multi-Face AR Effects</title><meta itemprop="name" content="Multi-Face AR Effects"><meta name="twitter:title" content="Multi-Face AR Effects"><meta property="og:title" content="Multi-Face AR Effects"><meta property="og:site_name" content="Multi-Face AR Effects"><meta name="description" content="Multi-face detection AR with up to 5 simultaneous faces tracked."><meta itemprop="description" content="Multi-face detection AR with up to 5 simultaneous faces tracked."><meta property="og:description" content="Multi-face detection AR with up to 5 simultaneous faces tracked."><script crossorigin="anonymous" src="./external/runtime/runtime.js"></script><script src="https://cdn.jsdelivr.net/npm/@8thwall/engine-binary@1/dist/xr.js" async crossorigin="anonymous" data-preload-chunks="face"></script><script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script><script>console.log('=== Multi-Face AR Loading ===')
+    function updateStatus(text, color = 'white') { console.log('Status:', text) }
+    function updateDetails(text) { console.log('Details:', text) }
+    window.updateLoadingStatus = updateStatus
+    window.updateLoadingDetails = updateDetails
+    console.log('Initialization script loaded')</script><link rel="preconnect" href="https://cdn.8thwall.com"><link rel="preconnect" href="https://cdn.jsdelivr.net"><meta property="og:image" content="https://8thwall.org/studio-face-effects-example/assets/preview.png"><style>/* (All existing CSS remains unchanged) */
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    .filter-scroll { display: flex; gap: 14px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; -ms-overflow-style: none; padding: 8px 24px; flex-wrap: nowrap; white-space: nowrap; scroll-padding-left: calc(50vw - 30px); scroll-padding-right: calc(50vw - 30px); scroll-behavior: smooth; touch-action: pan-x pan-y pinch-zoom; width: 100%; }
+    .filter-scroll::-webkit-scrollbar { display: none; }
+    .scroll-btn { display: none; position: absolute; z-index: 52; width: 36px; height: 36px; border-radius: 50%; background: rgba(255, 199, 96, 0.993); border: 1px solid rgb(255, 199, 96); color: rgb(255, 199, 96); font-size: 18px; cursor: pointer; align-items: center; justify-content: center; backdrop-filter: blur(4px); transition: all 0.2s ease; -webkit-user-select: none; user-select: none; }
+    .scroll-btn:hover { background: rgba(255,255,255,0.35); transform: scale(1.1); }
+    .scroll-btn:active { transform: scale(0.95); }
+    .scroll-btn.left { left: 4px; }
+    .scroll-btn.right { right: 4px; }
+    @media (min-width: 768px) { .scroll-btn { display: flex; } }
+    .filter-item { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 6px; scroll-snap-align: center; cursor: pointer; transition: transform 0.15s ease; -webkit-user-select: none; user-select: none; min-width: 12vw; max-width: 80px; }
+    .filter-item:active { transform: scale(0.92); }
+    .filter-thumb {   width: 12vw;          /* 12% of viewport width */
+  height: 12vw;
+  max-width: 80px;      /* cap size on large screens */
+  max-height: 80px;
+  border-radius: 50%; border: 2px solid rgb(255, 255, 255); overflow: hidden; position: relative; transition: all 0.2s ease; background-size: cover; background-position: center; flex-shrink: 0; background-color: #333; }
+    .filter-item.active .filter-thumb { border-color: #fff; box-shadow: 0 0 0 3px #ffd9e3, 0 0 12px rgba(76, 175, 80, 0.4); transform: scale(1.08); }
+    .filter-item.active .filter-name { color: #ffd9e3; font-weight: 700; }
+    .filter-name { color: rgba(255,255,255,0.7); font-size:  clamp(10px, 2.5vw, 14px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 64px; transition: color 0.2s ease; text-shadow: 0 1px 3px rgba(0,0,0,0.5); text-align: center; }
+    .center-indicator { position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%); width: 2px; height: 18px; background: rgba(255,255,255,0.4); border-radius: 1px; pointer-events: none; z-index: 51; opacity: 0; transition: opacity 0.5s ease; }
+    .center-indicator.visible { opacity: 1; }
+    #current-filter-label { position: fixed; bottom: 118px; left: 50%; transform: translateX(-50%); color: white; font-size: 15px; font-weight: 600; text-shadow: 0 2px 10px rgba(0,0,0,0.8); opacity: 0; transition: opacity 0.3s ease; pointer-events: none; z-index: 51; letter-spacing: 0.5px; }
+    #current-filter-label.visible { opacity: 1; }
+    #capture-btn { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: clamp(50px, 10vw, 80px); height: clamp(50px, 10vw, 80px); border-radius: 50%; border: 4px solid white; background: rgba(255,255,255,0.15); cursor: pointer; z-index: 50; opacity: 0; transition: all 0.3s ease; pointer-events: none; backdrop-filter: blur(4px); }
+    #capture-btn.visible { opacity: 1; pointer-events: auto; }
+    #capture-btn::after { content: ''; position: absolute; top: 5px; left: 5px; right: 5px; bottom: 5px; border-radius: 50%; background: white; transition: all 0.15s ease; }
+    #capture-btn:active::after { transform: scale(0.88); background: #e0e0e0; }
+    #face-indicator { position: fixed; top: 16px; right: 16px; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); border-radius: 20px; padding: 10px 14px; z-index: 50; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255, 255, 255, 0.1); opacity: 0; transition: opacity 0.5s ease; }
+    #face-indicator.visible { opacity: 1; }
+    .face-dot { width: 12px; height: 12px; border-radius: 50%; background: #333; border: 2px solid rgba(255, 255, 255, 0.3); transition: all 0.3s ease; }
+    .face-dot.active { background: #db86cc; border-color: #db86cc; box-shadow: 0 0 8px rgba(167, 76, 175, 0.5); }
+    .face-dot-label { color: white; font-size: 11px; font-weight: 600; margin-right: 2px; }
+    #simple-loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    #loading-video { width: 110%; height: 110%; object-fit: cover; transform: translateX(-20px); }
+    #camera-error { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: white; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; text-align: center; padding: 20px; }
+    #camera-error h2 { color: #ff6b6b; margin-bottom: 20px; }
+    #camera-error p { margin-bottom: 10px; opacity: 0.9; }
+    @keyframes scrollHint { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-8px); } }
+    .scroll-hint { animation: scrollHint 1.5s ease-in-out 3; }
+    #filter-nav {
+  position: fixed;
+  bottom: 40px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  z-index: 50;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+#filter-nav.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.filter-arrow {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(221, 255, 214, 0.559);
+  border: 2px solid white;
+  color: white;
+  font-size: 32px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  transition: transform 0.2s;
+  user-select: none;
+}
+.filter-arrow:active {
+  transform: scale(0.9);
+}
+#filter-name-display {
+  color: white;
+  font-size: 20px;
+  font-weight: 600;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+  background: rgba(0,0,0,0.4);
+  padding: 8px 20px;
+  border-radius: 30px;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+  @font-face {
+    font-family: 'tk1';
+    src: url('assets/Tk1-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }</style></head><body><div id="filter-nav"><button id="filter-prev" class="filter-arrow" aria-label="Previous filter">‹</button> <button id="filter-next" class="filter-arrow" aria-label="Next filter">›</button></div><div class="center-indicator" id="center-indicator"></div><div id="current-filter-label">Baobao</div><div id="capture-btn"></div><div id="face-indicator"><span class="face-dot-label">Faces:</span><div class="face-dot" data-face="1" title="Face 1"></div><div class="face-dot" data-face="2" title="Face 2"></div><div class="face-dot" data-face="3" title="Face 3"></div></div><div id="simple-loading"><video id="loading-video" autoplay loop muted playsinline><source src="assets/rabbitloading.mp4" type="video/mp4"><div style="color:white; font-size:20px;">Loading AR experience...</div></video></div><div id="camera-error"></div><script>(function() {
+    // ----- SPACE NAME → UUID MAPPING (from .expanse.json) -----
+    const spaceMap = {
+      'baobao':    '84028e73-ee70-412d-b8d4-c09bf07c655c',
+      'realcat':   '1a5ce9bc-1ff5-4c23-808b-d5866200dc2c',
+      'thirdcat':  '7a14d767-1199-4786-9f63-b28a54b58bdb',
+
+    };
+
+    // List of scene keys in order (for cycling)
+    const sceneKeys = Object.keys(spaceMap);
+    let currentIndex = 0; // default to 'baobao'
+
+    const prevBtn = document.getElementById('filter-prev');
+    const nextBtn = document.getElementById('filter-next');
+
+    // Helper: load a scene by key
+    function loadScene(key) {
+      const spaceId = spaceMap[key];
+      if (spaceId && window.globalWorld) {
+        window.globalWorld.spaces.loadSpace(spaceId);
+        console.log(`➡️ Loading space: ${key} (${spaceId})`);
+        // Update display
+        // Optionally update active state (no carousel items, so just update index)
+        currentIndex = sceneKeys.indexOf(key);
+      } else {
+        console.warn(`❌ Cannot load space: ${key} (globalWorld not ready or unknown)`);
+        if (!window.globalWorld) {
+          setTimeout(() => {
+            if (window.globalWorld) {
+              console.log('🔄 Retrying loadSpace after globalWorld became available');
+              const retryId = spaceMap[key];
+              if (retryId) window.globalWorld.spaces.loadSpace(retryId);
+            }
+          }, 500);
+        }
+      }
+    }
+
+    // Switch to previous/next scene
+    function prevScene() {
+      const newIndex = (currentIndex - 1 + sceneKeys.length) % sceneKeys.length;
+      loadScene(sceneKeys[newIndex]);
+    }
+    function nextScene() {
+      const newIndex = (currentIndex + 1) % sceneKeys.length;
+      loadScene(sceneKeys[newIndex]);
+    }
+
+    // Event listeners
+    if (prevBtn) prevBtn.addEventListener('click', prevScene);
+    if (nextBtn) nextBtn.addEventListener('click', nextScene);
+
+    // Keyboard support
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') prevScene();
+      if (e.key === 'ArrowRight') nextScene();
+    });
+
+    // Initial display (load first scene, but we can just display name)
+
+
+    // Expose the show function for the ECS component
+    window.showFilterCarousel = function() {
+      const nav = document.getElementById('filter-nav');
+      if (nav) nav.classList.add('visible');
+      // Also show capture button if needed
+      const captureBtn = document.getElementById('capture-btn');
+      if (captureBtn) captureBtn.classList.add('visible');
+    };
+
+    // Optionally, if you want to auto-load the first scene when ready,
+    // you can call loadScene('baobao') but it might be loaded by default anyway.
+  })();</script><script src="bundle.js"></script><style>.filter-scroll::-webkit-scrollbar,
+    .scrollable-selector::-webkit-scrollbar {
+      display: none;
+    }</style></body></html>
